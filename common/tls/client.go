@@ -10,6 +10,7 @@ import (
 	"github.com/sagernet/sing-box/common/badtls"
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
+	E "github.com/sagernet/sing/common/exceptions"
 	"github.com/sagernet/sing/common/logger"
 	M "github.com/sagernet/sing/common/metadata"
 	N "github.com/sagernet/sing/common/network"
@@ -70,6 +71,9 @@ func NewClientWithOptions(options ClientOptions) (Config, error) {
 }
 
 func ClientHandshake(ctx context.Context, conn net.Conn, config Config) (Conn, error) {
+	if config == nil {
+		return nil, E.New("TLS config is nil, please check your outbound TLS configuration")
+	}
 	ctx, cancel := context.WithTimeout(ctx, C.TCPTimeout)
 	defer cancel()
 	tlsConn, err := aTLS.ClientHandshake(ctx, conn, config)
