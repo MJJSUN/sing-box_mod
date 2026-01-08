@@ -30,15 +30,16 @@ func RegisterInbound(registry *inbound.Registry) {
 
 type Inbound struct {
 	inbound.Adapter
-	router       adapter.ConnectionRouterEx
-	logger       log.ContextLogger
-	listener     *listener.Listener
-	tlsConfig    tls.ServerConfig
-	server       *tuic.Service[int]
-	userNameList []string
-	uidToUuid    map[int]string
-	uuidToUid    map[string]int
-	userconns    sync.Map
+	router           adapter.ConnectionRouterEx
+	logger           log.ContextLogger
+	listener         *listener.Listener
+	tlsConfig        tls.ServerConfig
+	server           *tuic.Service[int]
+	userNameList     []string
+	userPasswordList []string // Added: store user passwords for dynamic user management
+	uidToUuid        map[int]string
+	uuidToUid        map[string]int
+	userconns        sync.Map
 }
 
 func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLogger, tag string, options option.TUICInboundOptions) (adapter.Inbound, error) {
@@ -103,6 +104,7 @@ func NewInbound(ctx context.Context, router adapter.Router, logger log.ContextLo
 	service.UpdateUsers(userList, userUUIDList, userPasswordList)
 	inbound.server = service
 	inbound.userNameList = userNameList
+	inbound.userPasswordList = userPasswordList // Save password list for dynamic user management
 	inbound.uidToUuid = uidToUuid
 	inbound.uuidToUid = uuidToUid
 	inbound.userconns = sync.Map{}

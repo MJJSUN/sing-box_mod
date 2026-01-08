@@ -11,6 +11,7 @@ import (
 func (h *Inbound) AddUsers(users []option.TUICUser, ids []int) error {
 	for i, user := range users {
 		h.userNameList = append(h.userNameList, user.Name)
+		h.userPasswordList = append(h.userPasswordList, user.Password) // Save password
 		h.uuidToUid[user.UUID] = ids[i]
 		h.uidToUuid[ids[i]] = user.UUID
 	}
@@ -24,9 +25,10 @@ func (h *Inbound) AddUsers(users []option.TUICUser, ids []int) error {
 		}
 		userUUIDList = append(userUUIDList, userUUID)
 	}
-	h.server.UpdateUsers(indexs, userUUIDList, h.userNameList)
+	h.server.UpdateUsers(indexs, userUUIDList, h.userPasswordList) // Use password list instead of name list
 	return nil
 }
+
 func (h *Inbound) DelUsers(names []string) error {
 	if len(names) == 0 {
 		return nil
@@ -44,13 +46,20 @@ func (h *Inbound) DelUsers(names []string) error {
 			return true
 		})
 	}
-	remaining := make([]string, 0, len(h.userNameList))
-	for _, user := range h.userNameList {
+	// Build new lists excluding deleted users
+	remainingNames := make([]string, 0, len(h.userNameList))
+	remainingPasswords := make([]string, 0, len(h.userPasswordList))
+	for i, user := range h.userNameList {
 		if _, found := toDelete[user]; !found {
-			remaining = append(remaining, user)
+			remainingNames = append(remainingNames, user)
+			if i < len(h.userPasswordList) {
+				remainingPasswords = append(remainingPasswords, h.userPasswordList[i])
+			}
 		}
 	}
-	h.userNameList = remaining
+	h.userNameList = remainingNames
+	h.userPasswordList = remainingPasswords
+	
 	var userUUIDList [][16]byte
 	indexs := make([]int, len(h.userNameList))
 	for i, UUID := range h.userNameList {
@@ -61,6 +70,6 @@ func (h *Inbound) DelUsers(names []string) error {
 		}
 		userUUIDList = append(userUUIDList, userUUID)
 	}
-	h.server.UpdateUsers(indexs, userUUIDList, h.userNameList)
+	h.server.UpdateUsers(indexs, userUUIDList, h.userPasswordList) // Use password list
 	return nil
 }
