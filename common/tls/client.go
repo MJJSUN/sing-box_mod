@@ -100,7 +100,56 @@ type defaultDialer struct {
 }
 
 func NewDialer(dialer N.Dialer, config Config) Dialer {
+	if config == nil {
+		return &noTLSDialer{dialer: dialer}
+	}
 	return &defaultDialer{dialer, config}
+}
+
+type noTLSDialer struct {
+	dialer N.Dialer
+}
+
+func (d *noTLSDialer) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
+	if N.NetworkName(network) != N.NetworkTCP {
+		return nil, os.ErrInvalid
+	}
+	return d.dialer.DialContext(ctx, N.NetworkTCP, destination)
+}
+
+func (d *noTLSDialer) ListenPacket(ctx context.Context, destination M.Socksaddr) (net.PacketConn, error) {
+	return nil, os.ErrInvalid
+}
+
+func (d *noTLSDialer) DialTLSContext(ctx context.Context, destination M.Socksaddr) (Conn, error) {
+	conn, err := d.dialer.DialContext(ctx, N.NetworkTCP, destination)
+	if err != nil {
+		return nil, err
+	}
+	if tlsConn, ok := conn.(Conn); ok {
+		return tlsConn, nil
+	}
+	return &plainTLSConn{Conn: conn}, nil
+}
+
+func (d *noTLSDialer) Upstream() any {
+	return d.dialer
+}
+
+type plainTLSConn struct {
+	net.Conn
+}
+
+func (c *plainTLSConn) NetConn() net.Conn {
+	return c.Conn
+}
+
+func (c *plainTLSConn) HandshakeContext(ctx context.Context) error {
+	return nil
+}
+
+func (c *plainTLSConn) ConnectionState() tls.ConnectionState {
+	return tls.ConnectionState{}
 }
 
 func (d *defaultDialer) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
